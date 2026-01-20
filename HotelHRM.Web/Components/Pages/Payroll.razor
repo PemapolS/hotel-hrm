@@ -1,0 +1,230 @@
+@page "/payroll"
+@using HotelHRM.Models
+@using HotelHRM.Services.Services
+@using HotelHRM.Web.Authentication
+@inject IPayrollService PayrollService
+@inject IEmployeeService EmployeeService
+@inject WebAuthService AuthService
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Payroll</PageTitle>
+
+<div class="container mt-4">
+    <h1>Payroll Management</h1>
+
+    <AuthorizeView Roles="HR,Admin">
+        <Authorized>
+            <div class="mb-3">
+                <button class="btn btn-success" @onclick="ShowProcessPayrollForm">
+                    <i class="bi bi-calculator"></i> Process Payroll
+                </button>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+
+    @if (showProcessForm)
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>Process New Payroll</h5>
+            </div>
+            <div class="card-body">
+                <EditForm Model="payrollForm" OnValidSubmit="ProcessPayroll">
+                    <div class="mb-3">
+                        <label class="form-label">Employee</label>
+                        <InputSelect class="form-control" @bind-Value="payrollForm.EmployeeId">
+                            <option value="0">-- Select Employee --</option>
+                            @if (employees != null)
+                            {
+                                @foreach (var emp in employees)
+                                {
+                                    <option value="@emp.Id">@emp.FullName - @emp.Position</option>
+                                }
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Pay Period Start</label>
+                                <InputDate class="form-control" @bind-Value="payrollForm.PeriodStart" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Pay Period End</label>
+                                <InputDate class="form-control" @bind-Value="payrollForm.PeriodEnd" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Bonus</label>
+                                <InputNumber class="form-control" @bind-Value="payrollForm.Bonus" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Deductions</label>
+                                <InputNumber class="form-control" @bind-Value="payrollForm.Deductions" />
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary">Process</button>
+                        <button type="button" class="btn btn-secondary" @onclick="CancelProcess">Cancel</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    @if (payrollRecords == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else if (displayedPayrollRecords.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Period</th>
+                        <th>Base Salary</th>
+                        <th>Bonus</th>
+                        <th>Deductions</th>
+                        <th>Gross Pay</th>
+                        <th>Net Pay</th>
+                        <th>Processed Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var record in displayedPayrollRecords)
+                    {
+                        <tr>
+                            <td>@(record.Employee?.FullName ?? $"Employee #{record.EmployeeId}")</td>
+                            <td>@record.PayPeriodStart.ToShortDateString() - @record.PayPeriodEnd.ToShortDateString()</td>
+                            <td>$@record.BaseSalary.ToString("N2")</td>
+                            <td>$@record.Bonus.ToString("N2")</td>
+                            <td>$@record.Deductions.ToString("N2")</td>
+                            <td>$@record.GrossPay.ToString("N2")</td>
+                            <td><strong>$@record.NetPay.ToString("N2")</strong></td>
+                            <td>@record.ProcessedDate.ToShortDateString()</td>
+                            <td><span class="badge bg-@GetStatusColor(record.Status)">@record.Status</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p>No payroll records found.</p>
+    }
+</div>
+
+@code {
+    private IEnumerable<PayrollRecord>? payrollRecords;
+    private IEnumerable<PayrollRecord> displayedPayrollRecords = new List<PayrollRecord>();
+    private IEnumerable<Employee>? employees;
+    private PayrollFormModel payrollForm = new();
+    private bool showProcessForm = false;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if user is authenticated
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user == null)
+        {
+            NavigationManager.NavigateTo("/login", true);
+            return;
+        }
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        payrollRecords = await PayrollService.GetAllPayrollRecordsAsync();
+        employees = await EmployeeService.GetAllEmployeesAsync();
+
+        // Filter payroll records based on role
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        if (currentUser != null)
+        {
+            if (currentUser.Role == UserRole.HR || currentUser.Role == UserRole.Admin)
+            {
+                // HR and Admin can see all payroll records
+                displayedPayrollRecords = payrollRecords;
+            }
+            else if (currentUser.EmployeeId.HasValue)
+            {
+                // Regular employees can only see their own payroll information
+                displayedPayrollRecords = payrollRecords.Where(p => p.EmployeeId == currentUser.EmployeeId.Value).ToList();
+            }
+            else
+            {
+                displayedPayrollRecords = new List<PayrollRecord>();
+            }
+        }
+    }
+
+    private void ShowProcessPayrollForm()
+    {
+        showProcessForm = true;
+        payrollForm = new PayrollFormModel
+        {
+            PeriodStart = DateTime.Today.AddDays(-14),
+            PeriodEnd = DateTime.Today,
+            Bonus = 0,
+            Deductions = 0
+        };
+    }
+
+    private async Task ProcessPayroll()
+    {
+        await PayrollService.ProcessPayrollAsync(
+            payrollForm.EmployeeId,
+            payrollForm.PeriodStart,
+            payrollForm.PeriodEnd,
+            payrollForm.Bonus,
+            payrollForm.Deductions
+        );
+
+        CancelProcess();
+        await LoadData();
+    }
+
+    private void CancelProcess()
+    {
+        showProcessForm = false;
+        payrollForm = new();
+    }
+
+    private string GetStatusColor(PayrollStatus status)
+    {
+        return status switch
+        {
+            PayrollStatus.Pending => "warning",
+            PayrollStatus.Processed => "info",
+            PayrollStatus.Paid => "success",
+            _ => "secondary"
+        };
+    }
+
+    private class PayrollFormModel
+    {
+        public int EmployeeId { get; set; }
+        public DateTime PeriodStart { get; set; }
+        public DateTime PeriodEnd { get; set; }
+        public decimal Bonus { get; set; }
+        public decimal Deductions { get; set; }
+    }
+}

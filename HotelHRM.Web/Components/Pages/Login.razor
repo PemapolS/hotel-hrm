@@ -1,0 +1,81 @@
+@page "/login"
+@using HotelHRM.Models
+@using HotelHRM.Web.Authentication
+@inject WebAuthService AuthService
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Login - Hotel HRM</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Hotel HRM Login</h3>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <InputText class="form-control" @bind-Value="loginModel.Username" placeholder="Enter username" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <InputText type="password" class="form-control" @bind-Value="loginModel.Password" placeholder="Enter password" />
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Login</button>
+                    </EditForm>
+
+                    <div class="mt-4">
+                        <h6>Demo Accounts:</h6>
+                        <ul class="small">
+                            <li><strong>HR Admin:</strong> hr.admin / password</li>
+                            <li><strong>Employee:</strong> john.doe / password</li>
+                            <li><strong>Employee:</strong> jane.smith / password</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private string errorMessage = string.Empty;
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private async Task HandleLogin()
+    {
+        errorMessage = string.Empty;
+
+        Console.WriteLine($"Login attempt: {loginModel.Username}");
+        var user = await AuthService.AuthenticateAsync(loginModel.Username, loginModel.Password);
+        Console.WriteLine($"User found: {user != null}");
+        
+        if (user == null)
+        {
+            errorMessage = "Invalid username or password.";
+            return;
+        }
+
+        await AuthService.LoginAsync(user);
+        
+        var returnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl;
+        NavigationManager.NavigateTo(returnUrl, true);
+    }
+
+    private class LoginModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}
