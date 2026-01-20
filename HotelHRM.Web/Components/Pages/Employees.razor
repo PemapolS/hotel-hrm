@@ -1,0 +1,226 @@
+@page "/employees"
+@using HotelHRM.Models
+@using HotelHRM.Services.Services
+@inject IEmployeeService EmployeeService
+@rendermode InteractiveServer
+
+<PageTitle>Employees</PageTitle>
+
+<div class="container mt-4">
+    <h1>Employee Management</h1>
+
+    <div class="mb-3">
+        <button class="btn btn-success" @onclick="ShowAddEmployeeForm">
+            <i class="bi bi-plus-circle"></i> Add Employee
+        </button>
+    </div>
+
+    @if (showAddForm || selectedEmployee != null)
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>@(selectedEmployee == null ? "Add New Employee" : "Edit Employee")</h5>
+            </div>
+            <div class="card-body">
+                <EditForm Model="employeeForm" OnValidSubmit="SaveEmployee">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">First Name</label>
+                                <InputText class="form-control" @bind-Value="employeeForm.FirstName" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Last Name</label>
+                                <InputText class="form-control" @bind-Value="employeeForm.LastName" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <InputText class="form-control" @bind-Value="employeeForm.Email" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Phone Number</label>
+                                <InputText class="form-control" @bind-Value="employeeForm.PhoneNumber" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Department</label>
+                                <InputText class="form-control" @bind-Value="employeeForm.Department" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Position</label>
+                                <InputText class="form-control" @bind-Value="employeeForm.Position" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Hire Date</label>
+                                <InputDate class="form-control" @bind-Value="employeeForm.HireDate" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Base Salary (Annual)</label>
+                                <InputNumber class="form-control" @bind-Value="employeeForm.BaseSalary" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <InputSelect class="form-control" @bind-Value="employeeForm.Status">
+                            <option value="@EmploymentStatus.Active">Active</option>
+                            <option value="@EmploymentStatus.OnLeave">On Leave</option>
+                            <option value="@EmploymentStatus.Terminated">Terminated</option>
+                        </InputSelect>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                        <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    @if (employees == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else if (employees.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Position</th>
+                        <th>Hire Date</th>
+                        <th>Base Salary</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var employee in employees)
+                    {
+                        <tr>
+                            <td>@employee.FullName</td>
+                            <td>@employee.Email</td>
+                            <td>@employee.Department</td>
+                            <td>@employee.Position</td>
+                            <td>@employee.HireDate.ToShortDateString()</td>
+                            <td>$@employee.BaseSalary.ToString("N0")</td>
+                            <td><span class="badge bg-@GetStatusColor(employee.Status)">@employee.Status</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" @onclick="() => EditEmployee(employee)">Edit</button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteEmployee(employee.Id)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p>No employees found.</p>
+    }
+</div>
+
+@code {
+    private IEnumerable<Employee>? employees;
+    private Employee employeeForm = new();
+    private Employee? selectedEmployee;
+    private bool showAddForm = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployees();
+    }
+
+    private async Task LoadEmployees()
+    {
+        employees = await EmployeeService.GetAllEmployeesAsync();
+    }
+
+    private void ShowAddEmployeeForm()
+    {
+        showAddForm = true;
+        selectedEmployee = null;
+        employeeForm = new Employee { HireDate = DateTime.Today };
+    }
+
+    private void EditEmployee(Employee employee)
+    {
+        selectedEmployee = employee;
+        employeeForm = new Employee
+        {
+            Id = employee.Id,
+            FirstName = employee.FirstName,
+            LastName = employee.LastName,
+            Email = employee.Email,
+            PhoneNumber = employee.PhoneNumber,
+            Department = employee.Department,
+            Position = employee.Position,
+            HireDate = employee.HireDate,
+            BaseSalary = employee.BaseSalary,
+            Status = employee.Status
+        };
+        showAddForm = false;
+    }
+
+    private async Task SaveEmployee()
+    {
+        if (selectedEmployee == null)
+        {
+            await EmployeeService.CreateEmployeeAsync(employeeForm);
+        }
+        else
+        {
+            await EmployeeService.UpdateEmployeeAsync(employeeForm);
+        }
+
+        CancelEdit();
+        await LoadEmployees();
+    }
+
+    private async Task DeleteEmployee(int id)
+    {
+        await EmployeeService.DeleteEmployeeAsync(id);
+        await LoadEmployees();
+    }
+
+    private void CancelEdit()
+    {
+        showAddForm = false;
+        selectedEmployee = null;
+        employeeForm = new();
+    }
+
+    private string GetStatusColor(EmploymentStatus status)
+    {
+        return status switch
+        {
+            EmploymentStatus.Active => "success",
+            EmploymentStatus.OnLeave => "warning",
+            EmploymentStatus.Terminated => "secondary",
+            _ => "secondary"
+        };
+    }
+}
