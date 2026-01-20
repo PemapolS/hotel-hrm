@@ -2,6 +2,8 @@
 
 A basic HRM application built with Blazor .NET featuring personnel record management and payroll calculation modules. The application is architected to support future backend API integration with AWS and Kubernetes containerization.
 
+**Note:** This is currently a development/demo version without authentication. All features are openly accessible for testing and demonstration purposes.
+
 ## Features
 
 ### Personnel Record Module
@@ -11,6 +13,9 @@ A basic HRM application built with Blazor .NET featuring personnel record manage
   - Employment details (department, position, hire date)
   - Salary information
   - Employment status (Active, On Leave, Terminated)
+- Pre-loaded with sample employee data
+
+**Note:** Currently uses in-memory storage. Data is reset when the application restarts.
 
 ### Payroll Calculation Module
 - Basic payroll processing
@@ -36,9 +41,11 @@ This architecture enables:
 - Containerized deployment with Kubernetes
 - Scalable microservices architecture in the future
 
+For a detailed explanation of the architecture and components, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Technology Stack
 
-- **.NET 8.0** - Framework
+- **.NET 10.0** - Framework
 - **Blazor Server** - UI Framework
 - **C#** - Programming Language
 - **Docker** - Containerization
@@ -46,7 +53,7 @@ This architecture enables:
 
 ## Prerequisites
 
-- .NET 8.0 SDK or later
+- .NET 10.0 SDK or later
 - Docker (for containerization)
 - Kubernetes cluster (for deployment)
 
@@ -76,7 +83,7 @@ cd HotelHRM.Web
 dotnet run
 ```
 
-5. Open your browser and navigate to `https://localhost:5001` or `http://localhost:5000`
+5. Open your browser and navigate to `http://localhost:5293`
 
 ## Docker Deployment
 
@@ -169,18 +176,14 @@ The current architecture supports the following future enhancements:
    - Support for SQL Server, PostgreSQL, or DynamoDB
    - Entity Framework Core for ORM
 
-3. **Authentication & Authorization**
-   - Add user authentication
-   - Role-based access control
-   - Integration with AWS Cognito or Azure AD
-
-4. **Additional HRM Modules**
+3. **Additional HRM Modules**
    - Leave management
    - Attendance tracking
    - Performance reviews
    - Training and development
+   - Authentication and user management
 
-5. **Cloud-Native Features**
+4. **Cloud-Native Features**
    - Distributed caching (Redis)
    - Message queuing (AWS SQS, RabbitMQ)
    - Monitoring and logging (CloudWatch, Application Insights)
