@@ -3,6 +3,7 @@
 @using HotelHRM.Web.Authentication
 @inject WebAuthService AuthService
 @inject NavigationManager NavigationManager
+@rendermode InteractiveServer
 
 <PageTitle>Login - Hotel HRM</PageTitle>
 
@@ -56,7 +57,10 @@
     {
         errorMessage = string.Empty;
 
+        Console.WriteLine($"Login attempt: {loginModel.Username}");
         var user = await AuthService.AuthenticateAsync(loginModel.Username, loginModel.Password);
+        Console.WriteLine($"User found: {user != null}");
+        
         if (user == null)
         {
             errorMessage = "Invalid username or password.";
