@@ -1,10 +1,23 @@
 ﻿@page "/"
+@using HotelHRM.Web.Authentication
+@inject WebAuthService AuthService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Hotel HRM</PageTitle>
 
 <div class="container mt-4">
     <h1>Hotel HRM System</h1>
     <p class="lead">Welcome to the Hotel Human Resource Management System</p>
+    
+    <AuthorizeView>
+        <Authorized>
+            <div class="alert alert-success mb-4">
+                <strong>Welcome, @context.User.Identity?.Name!</strong>
+                <br />
+                Role: @context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+            </div>
+        </Authorized>
+    </AuthorizeView>
     
     <div class="row mt-4">
         <div class="col-md-6">
@@ -32,3 +45,16 @@
         <p class="mb-0">This application is built with a layered architecture to support future backend API integration with AWS and Kubernetes containerization.</p>
     </div>
 </div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if user is authenticated
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user == null)
+        {
+            NavigationManager.NavigateTo("/login", true);
+            return;
+        }
+    }
+}

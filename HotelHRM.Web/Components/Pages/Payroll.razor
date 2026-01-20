@@ -1,8 +1,11 @@
 @page "/payroll"
 @using HotelHRM.Models
 @using HotelHRM.Services.Services
+@using HotelHRM.Web.Authentication
 @inject IPayrollService PayrollService
 @inject IEmployeeService EmployeeService
+@inject WebAuthService AuthService
+@inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
 <PageTitle>Payroll</PageTitle>
@@ -10,11 +13,15 @@
 <div class="container mt-4">
     <h1>Payroll Management</h1>
 
-    <div class="mb-3">
-        <button class="btn btn-success" @onclick="ShowProcessPayrollForm">
-            <i class="bi bi-calculator"></i> Process Payroll
-        </button>
-    </div>
+    <AuthorizeView Roles="HR,Admin">
+        <Authorized>
+            <div class="mb-3">
+                <button class="btn btn-success" @onclick="ShowProcessPayrollForm">
+                    <i class="bi bi-calculator"></i> Process Payroll
+                </button>
+            </div>
+        </Authorized>
+    </AuthorizeView>
 
     @if (showProcessForm)
     {
@@ -78,7 +85,7 @@
     {
         <p><em>Loading...</em></p>
     }
-    else if (payrollRecords.Any())
+    else if (displayedPayrollRecords.Any())
     {
         <div class="table-responsive">
             <table class="table table-striped">
@@ -96,7 +103,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var record in payrollRecords)
+                    @foreach (var record in displayedPayrollRecords)
                     {
                         <tr>
                             <td>@(record.Employee?.FullName ?? $"Employee #{record.EmployeeId}")</td>
@@ -122,12 +129,24 @@
 
 @code {
     private IEnumerable<PayrollRecord>? payrollRecords;
+    private IEnumerable<PayrollRecord> displayedPayrollRecords = new List<PayrollRecord>();
     private IEnumerable<Employee>? employees;
     private PayrollFormModel payrollForm = new();
     private bool showProcessForm = false;
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        // Check if user is authenticated
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user == null)
+        {
+            NavigationManager.NavigateTo("/login", true);
+            return;
+        }
+
         await LoadData();
     }
 
@@ -135,6 +154,26 @@
     {
         payrollRecords = await PayrollService.GetAllPayrollRecordsAsync();
         employees = await EmployeeService.GetAllEmployeesAsync();
+
+        // Filter payroll records based on role
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        if (currentUser != null)
+        {
+            if (currentUser.Role == UserRole.HR || currentUser.Role == UserRole.Admin)
+            {
+                // HR and Admin can see all payroll records
+                displayedPayrollRecords = payrollRecords;
+            }
+            else if (currentUser.EmployeeId.HasValue)
+            {
+                // Regular employees can only see their own payroll information
+                displayedPayrollRecords = payrollRecords.Where(p => p.EmployeeId == currentUser.EmployeeId.Value).ToList();
+            }
+            else
+            {
+                displayedPayrollRecords = new List<PayrollRecord>();
+            }
+        }
     }
 
     private void ShowProcessPayrollForm()
