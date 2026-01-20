@@ -1,10 +1,7 @@
 @page "/employees"
 @using HotelHRM.Models
 @using HotelHRM.Services.Services
-@using HotelHRM.Web.Authentication
 @inject IEmployeeService EmployeeService
-@inject WebAuthService AuthService
-@inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
 <PageTitle>Employees</PageTitle>
@@ -12,15 +9,11 @@
 <div class="container mt-4">
     <h1>Employee Management</h1>
 
-    <AuthorizeView Roles="HR,Admin">
-        <Authorized>
-            <div class="mb-3">
-                <button class="btn btn-success" @onclick="ShowAddEmployeeForm">
-                    <i class="bi bi-plus-circle"></i> Add Employee
-                </button>
-            </div>
-        </Authorized>
-    </AuthorizeView>
+    <div class="mb-3">
+        <button class="btn btn-success" @onclick="ShowAddEmployeeForm">
+            <i class="bi bi-plus-circle"></i> Add Employee
+        </button>
+    </div>
 
     @if (showAddForm || selectedEmployee != null)
     {
@@ -120,11 +113,7 @@
                         <th>Hire Date</th>
                         <th>Base Salary</th>
                         <th>Status</th>
-                        <AuthorizeView Roles="HR,Admin">
-                            <Authorized>
-                                <th>Actions</th>
-                            </Authorized>
-                        </AuthorizeView>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -138,14 +127,10 @@
                             <td>@employee.HireDate.ToShortDateString()</td>
                             <td>$@employee.BaseSalary.ToString("N0")</td>
                             <td><span class="badge bg-@GetStatusColor(employee.Status)">@employee.Status</span></td>
-                            <AuthorizeView Roles="HR,Admin">
-                                <Authorized>
-                                    <td>
-                                        <button class="btn btn-sm btn-primary" @onclick="() => EditEmployee(employee)">Edit</button>
-                                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteEmployee(employee.Id)">Delete</button>
-                                    </td>
-                                </Authorized>
-                            </AuthorizeView>
+                            <td>
+                                <button class="btn btn-sm btn-primary" @onclick="() => EditEmployee(employee)">Edit</button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteEmployee(employee.Id)">Delete</button>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -165,45 +150,15 @@
     private Employee? selectedEmployee;
     private bool showAddForm = false;
 
-    [CascadingParameter]
-    private Task<AuthenticationState>? AuthenticationState { get; set; }
-
     protected override async Task OnInitializedAsync()
     {
-        // Check if user is authenticated
-        var user = await AuthService.GetCurrentUserAsync();
-        if (user == null)
-        {
-            NavigationManager.NavigateTo("/login", true);
-            return;
-        }
-
         await LoadEmployees();
     }
 
     private async Task LoadEmployees()
     {
         employees = await EmployeeService.GetAllEmployeesAsync();
-        
-        // Filter employees based on role
-        var currentUser = await AuthService.GetCurrentUserAsync();
-        if (currentUser != null)
-        {
-            if (currentUser.Role == UserRole.HR || currentUser.Role == UserRole.Admin)
-            {
-                // HR and Admin can see all employees
-                displayedEmployees = employees;
-            }
-            else if (currentUser.EmployeeId.HasValue)
-            {
-                // Regular employees can only see their own information
-                displayedEmployees = employees.Where(e => e.Id == currentUser.EmployeeId.Value).ToList();
-            }
-            else
-            {
-                displayedEmployees = new List<Employee>();
-            }
-        }
+        displayedEmployees = employees;
     }
 
     private void ShowAddEmployeeForm()

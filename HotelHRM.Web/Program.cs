@@ -1,8 +1,6 @@
 using HotelHRM.Web.Components;
-using HotelHRM.Web.Authentication;
 using HotelHRM.Data.Repositories;
 using HotelHRM.Services.Services;
-using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,15 +8,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Add authentication and authorization
-builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
-builder.Services.AddCascadingAuthenticationState();
-
 // Register application services
 builder.Services.AddSingleton<IUserRepository, InMemoryUserRepository>();
 builder.Services.AddSingleton<IEmployeeRepository, InMemoryEmployeeRepository>();
 builder.Services.AddSingleton<IPayrollRepository, InMemoryPayrollRepository>();
-builder.Services.AddScoped<WebAuthService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IPayrollService, PayrollService>();
 
